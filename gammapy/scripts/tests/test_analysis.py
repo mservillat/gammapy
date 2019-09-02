@@ -102,26 +102,17 @@ def config_analysis_data():
                 parameters:
                 - factor: 2.0
                   frozen: false
-                  max: .nan
-                  min: .nan
                   name: index
-                  scale: 1.0
                   unit: ''
                   value: 2.0
                 - factor: 1.0e-12
                   frozen: false
-                  max: .nan
-                  min: .nan
                   name: amplitude
-                  scale: 1.0
                   unit: cm-2 s-1 TeV-1
                   value: 5.0e-11
                 - factor: 1.0
                   frozen: true
-                  max: .nan
-                  min: .nan
                   name: reference
-                  scale: 1.0
                   unit: TeV
                   value: 1.0
                 type: PowerLaw
