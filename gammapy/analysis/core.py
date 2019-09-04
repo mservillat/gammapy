@@ -24,6 +24,7 @@ from gammapy.spectrum import (
     SpectrumDatasetMaker,
 )
 from gammapy.utils.scripts import make_path, read_yaml
+from gammapy.utils.provenance import LogProv
 
 __all__ = ["Analysis", "AnalysisConfig"]
 
@@ -39,7 +40,7 @@ ANALYSIS_TEMPLATES = {
 }
 
 
-class Analysis:
+class Analysis(metaclass=LogProv):
     """Config-driven high-level analysis interface.
 
     It is initialized by default with a set of configuration parameters and values declared in
@@ -133,6 +134,7 @@ class Analysis:
         self.observations = self.datastore.get_observations(ids, skip_missing=True)
         for obs in self.observations.list:
             log.info(obs)
+        return self
 
     def get_datasets(self):
         """Produce reduced datasets."""
