@@ -1,5 +1,5 @@
 """
-Provenance-related functionality
+Provenance-related functionality (from ctapipe initially)
 
 TODO: have this register whenever gammapy is loaded
 
