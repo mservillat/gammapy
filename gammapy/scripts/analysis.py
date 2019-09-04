@@ -20,6 +20,7 @@ from gammapy.spectrum import (
 from gammapy.spectrum.models import SPECTRAL_MODELS
 from gammapy.utils.fitting import Fit
 from gammapy.utils.scripts import make_path, read_yaml
+from gammapy.utils.provenance import Provenance, trace
 
 __all__ = ["Analysis", "Config"]
 
@@ -115,6 +116,7 @@ class Analysis:
         else:
             log.info("Flux point estimation available only for 1D spectrum.")
 
+    @trace
     def get_observations(self):
         """Fetch observations from the data store according to criteria defined in the configuration."""
         self.config.validate()
