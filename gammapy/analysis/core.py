@@ -142,8 +142,10 @@ class Analysis(metaclass=LogProv):
             return False
         if self.settings["datasets"]["dataset-type"] == "SpectrumDatasetOnOff":
             self._spectrum_extraction()
+            return self
         elif self.settings["datasets"]["dataset-type"] == "MapDataset":
             self._map_making()
+            return self
         else:
             # TODO raise error?
             log.info("Data reduction method not available.")
@@ -180,6 +182,7 @@ class Analysis(metaclass=LogProv):
                     raise ValueError("Cannot fit multiple spectral models")
                 dataset.model = self.model[0].spectral_model
         log.info(self.model)
+        return self
 
     def run_fit(self, optimize_opts=None):
         """Fitting reduced datasets to model."""
@@ -199,6 +202,7 @@ class Analysis(metaclass=LogProv):
         self.fit = Fit(self.datasets)
         self.fit_result = self.fit.run(optimize_opts=optimize_opts)
         log.info(self.fit_result)
+        return self
 
     def get_flux_points(self, source="source"):
         """Calculate flux points for a specific model component.
@@ -224,6 +228,7 @@ class Analysis(metaclass=LogProv):
         self.flux_points = FluxPointsDataset(data=fp, model=model)
         cols = ["e_ref", "ref_flux", "dnde", "dnde_ul", "dnde_err", "is_ul"]
         log.info("\n{}".format(self.flux_points.data.table[cols]))
+        return self
 
     @staticmethod
     def _create_geometry(params):
@@ -332,6 +337,7 @@ class Analysis(metaclass=LogProv):
         else:
             # TODO: raise error?
             log.info("Background estimation only for reflected regions method.")
+            return False
 
         safe_mask_maker = SafeMaskMaker(methods=["aeff-default", "aeff-max"])
 
