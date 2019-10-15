@@ -24,7 +24,7 @@ from gammapy.spectrum import (
     SpectrumDatasetMaker,
 )
 from gammapy.utils.scripts import make_path, read_yaml
-from gammapy.utils.provenance import LogProv
+from gammapy.utils.provenance import provenance
 
 __all__ = ["Analysis", "AnalysisConfig"]
 
@@ -40,7 +40,8 @@ ANALYSIS_TEMPLATES = {
 }
 
 
-class Analysis(metaclass=LogProv):
+@provenance
+class Analysis:
     """Config-driven high-level analysis interface.
 
     It is initialized by default with a set of configuration parameters and values declared in
