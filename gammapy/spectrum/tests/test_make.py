@@ -5,7 +5,7 @@ from numpy.testing import assert_allclose
 import astropy.units as u
 from astropy.coordinates import Angle, SkyCoord
 from regions import CircleSkyRegion
-from gammapy.data import DataStore, ObservationStats
+from gammapy.data import DataStore
 from gammapy.maps import WcsGeom, WcsNDMap
 from gammapy.spectrum import (
     ReflectedRegionsBackgroundMaker,
@@ -18,9 +18,7 @@ from gammapy.utils.testing import assert_quantity_allclose, requires_data
 @pytest.fixture
 def observations_hess_dl3():
     """HESS DL3 observation list."""
-    datastore = DataStore.from_file(
-        "$GAMMAPY_DATA/hess-dl3-dr1/hess-dl3-dr3-with-background.fits.gz"
-    )
+    datastore = DataStore.from_dir("$GAMMAPY_DATA/hess-dl3-dr1/")
     obs_ids = [23523, 23526]
     return datastore.get_observations(obs_ids)
 
@@ -67,17 +65,13 @@ def spectrum_dataset_maker_crab_fine_bins():
 @pytest.fixture
 def reflected_regions_bkg_maker():
     pos = SkyCoord(83.63, 22.01, unit="deg", frame="icrs")
-    radius = Angle(0.11, "deg")
-    region = CircleSkyRegion(pos, radius)
-
-    pos = SkyCoord(83.63, 22.01, unit="deg", frame="icrs")
     exclusion_region = CircleSkyRegion(pos, Angle(0.3, "deg"))
     geom = WcsGeom.create(skydir=pos, binsz=0.02, width=10.0)
     mask = geom.region_mask([exclusion_region], inside=False)
     exclusion_mask = WcsNDMap(geom, data=mask)
 
     return ReflectedRegionsBackgroundMaker(
-        region=region, exclusion_mask=exclusion_mask, min_distance_input="0.2 deg"
+        exclusion_mask=exclusion_mask, min_distance_input="0.2 deg"
     )
 
 
@@ -97,8 +91,8 @@ def test_spectrum_dataset_maker_hess_dl3(
     assert_allclose(datasets[0].livetime.value, 1581.736758)
     assert_allclose(datasets[1].livetime.value, 1572.686724)
 
-    assert_allclose(datasets[0].background.data.sum(), 1.737258, rtol=1e-5)
-    assert_allclose(datasets[1].background.data.sum(), 1.741604, rtol=1e-5)
+    assert_allclose(datasets[0].background.data.sum(), 7.74732, rtol=1e-5)
+    assert_allclose(datasets[1].background.data.sum(), 6.118879, rtol=1e-5)
 
 
 @requires_data()
@@ -197,14 +191,10 @@ class TestSpectrumMakerChain:
         assert_quantity_allclose(edisp_actual, results["edisp"], rtol=1e-3)
 
         # TODO: Introduce assert_stats_allclose
-        info = dataset._info_dict()
-        info["obs_id"] = info.pop("name")
-        stats = ObservationStats(**info)
-        n_on_actual = stats.n_on
-        sigma_actual = stats.sigma
+        info = dataset.info_dict()
 
-        assert n_on_actual == results["n_on"]
-        assert_allclose(sigma_actual, results["sigma"], atol=1e-2)
+        assert info["n_on"] == results["n_on"]
+        assert_allclose(info["significance"], results["sigma"], atol=1e-2)
 
         gti_obs = obs.gti.table
         gti_dataset = dataset.gti.table

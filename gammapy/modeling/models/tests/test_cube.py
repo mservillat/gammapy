@@ -15,6 +15,7 @@ from gammapy.modeling.models import (
     SkyDiffuseCube,
     SkyModel,
     SkyModels,
+    create_fermi_isotropic_diffuse_model,
 )
 from gammapy.utils.testing import requires_data
 
@@ -105,42 +106,38 @@ def sky_models_2(sky_model):
 
 
 def test_sky_model_init():
-    with pytest.raises(ValueError) as excinfo:
-        spatial_model = GaussianSpatialModel("0 deg", "0 deg", "0.1 deg")
-        _ = SkyModel(spectral_model=1234, spatial_model=spatial_model)
+    with pytest.raises(TypeError):
+        spatial_model = GaussianSpatialModel()
+        SkyModel(spectral_model=1234, spatial_model=spatial_model)
 
-    assert "Spectral model" in str(excinfo.value)
-
-    with pytest.raises(ValueError) as excinfo:
-        _ = SkyModel(spectral_model=PowerLawSpectralModel(), spatial_model=1234)
-
-    assert "Spatial model" in str(excinfo.value)
+    with pytest.raises(TypeError):
+        SkyModel(spectral_model=PowerLawSpectralModel(), spatial_model=1234)
 
 
 def test_skymodel_addition(sky_model, sky_models, sky_models_2, diffuse_model):
-    result = sky_model + sky_model.copy()
-    assert isinstance(result, SkyModels)
-    assert len(result.skymodels) == 2
+    models = sky_model + sky_model.copy()
+    assert isinstance(models, SkyModels)
+    assert len(models) == 2
 
-    result = sky_model + sky_models
-    assert isinstance(result, SkyModels)
-    assert len(result.skymodels) == 3
+    models = sky_model + sky_models
+    assert isinstance(models, SkyModels)
+    assert len(models) == 3
 
-    result = sky_models + sky_model
-    assert isinstance(result, SkyModels)
-    assert len(result.skymodels) == 3
+    models = sky_models + sky_model
+    assert isinstance(models, SkyModels)
+    assert len(models) == 3
 
-    result = sky_models + diffuse_model
-    assert isinstance(result, SkyModels)
-    assert len(result.skymodels) == 3
+    models = sky_models + diffuse_model
+    assert isinstance(models, SkyModels)
+    assert len(models) == 3
 
-    result = sky_models + sky_models_2
-    assert isinstance(result, SkyModels)
-    assert len(result.skymodels) == 4
+    models = sky_models + sky_models_2
+    assert isinstance(models, SkyModels)
+    assert len(models) == 4
 
-    result = sky_model + sky_models
-    assert isinstance(result, SkyModels)
-    assert len(result.skymodels) == 3
+    models = sky_model + sky_models
+    assert isinstance(models, SkyModels)
+    assert len(models) == 3
 
 
 def test_background_model(background):
@@ -172,7 +169,7 @@ class TestSkyModels:
 
         # Check that model parameters are references to the parts
         p1 = sky_models.parameters["lon_0"]
-        p2 = sky_models.skymodels[0].parameters["lon_0"]
+        p2 = sky_models[0].parameters["lon_0"]
         assert p1 is p2
 
     @staticmethod
@@ -200,10 +197,8 @@ class TestSkyModels:
         model = sky_models["source-3"]
         assert model.name == "source-3"
 
-        with pytest.raises(ValueError) as excinfo:
+        with pytest.raises(IndexError):
             sky_models["spam"]
-
-        assert "'spam' is not in list" == str(excinfo.value)
 
 
 class TestSkyModel:
@@ -410,9 +405,11 @@ def test_sky_point_source():
     )
     exposure.data = np.ones_like(exposure.data)
 
-    spatial_model = PointSpatialModel(100.06 * u.deg, 70.03 * u.deg, frame="icrs")
+    spatial_model = PointSpatialModel(
+        lon_0=100.06 * u.deg, lat_0=70.03 * u.deg, frame="icrs"
+    )
     # Create a spectral model with integral flux of 1 cm-2 s-1 in this energy band
-    spectral_model = ConstantSpectralModel("1 cm-2 s-1 TeV-1")
+    spectral_model = ConstantSpectralModel(const="1 cm-2 s-1 TeV-1")
     spectral_model.const.value /= spectral_model.integral(1 * u.TeV, 10 * u.TeV).value
     model = SkyModel(spatial_model=spatial_model, spectral_model=spectral_model)
     evaluator = MapEvaluator(model=model, exposure=exposure)
@@ -427,3 +424,15 @@ def test_sky_point_source():
     assert_allclose(flux, expected, atol=0.01)
 
     assert_allclose(flux.sum(), 1)
+
+
+@requires_data()
+def test_fermi_isotropic():
+    filename = "$GAMMAPY_DATA/fermi_3fhl/iso_P8R2_SOURCE_V6_v06.txt"
+    model = create_fermi_isotropic_diffuse_model(filename)
+    coords = {"lon": 0 * u.deg, "lat": 0 * u.deg, "energy": 50 * u.GeV}
+
+    flux = model(**coords)
+
+    assert_allclose(flux.value, 1.463e-13, rtol=1e-3)
+    assert flux.unit == "MeV-1 cm-2 s-1 sr-1"

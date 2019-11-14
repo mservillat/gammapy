@@ -2,8 +2,8 @@
 
 .. _tutorials:
 
-Tutorial notebooks
-==================
+Tutorials
+=========
 
 This page lists the Gammapy tutorials that are available as `Jupyter`_ notebooks.
 
@@ -41,6 +41,7 @@ Notebooks
    notebooks/cta_sensitivity.ipynb
    notebooks/spectrum_simulation.ipynb
    notebooks/image_analysis.ipynb
+   notebooks/joint_1d_3d_analysis.ipynb
 
 
 For a quick introduction to Gammapy, go here:
@@ -64,6 +65,7 @@ To get started with H.E.S.S. data analysis see here:
 - `Joint 3D analysis <notebooks/analysis_3d_joint.html>`__ | *analysis_3d_joint.ipynb*
 - `3D simulation and fitting <notebooks/simulate_3d.html>`__ | *simulate_3d.ipynb*
 - `Fermi-LAT data with Gammapy <notebooks/fermi_lat.html>`__ | *fermi_lat.ipynb*
+- `Joint 3D and 1D analysis <notebooks/joint_1d_3d_analysis.html>`__ | *joint_1d_3d_analysis.ipynb*
 
 2-dimensional sky image analysis:
 
@@ -86,6 +88,21 @@ Time-dependent analysis:
 Sensitivity:
 
 - `Compute the CTA sensitivity <notebooks/cta_sensitivity.html>`__ | *cta_sensitivity.ipynb*
+
+.. _tutorials_scripts:
+
+Scripts
+-------
+
+TODO: show a few examples how to use Gammapy from Python scripts.
+
+::
+
+    cd $GAMMAPY_DATA/../scripts-0.13
+    python cta_1dc_survey_map.py
+
+- TODO: Make a CTA 1DC survey counts map
+- TODO: some other long-running analysis or simulation
 
 .. _tutorials_extras:
 

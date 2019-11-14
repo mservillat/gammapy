@@ -1,7 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 import pytest
 import numpy as np
-from numpy.testing import assert_allclose
+from numpy.testing import assert_allclose, assert_equal
 from gammapy.modeling import Parameter, Parameters
 
 
@@ -106,12 +106,16 @@ def test_parameters_basics(pars):
     assert_allclose(pars.error(1), 10)
 
 
+def test_parameters_copy(pars):
+    pars2 = pars.copy()
+    assert pars is not pars2
+    assert pars[0] is not pars2[0]
+
+
 def test_parameters_from_stack():
     a = Parameter("a", 1)
     b = Parameter("b", 2)
     c = Parameter("c", 3)
-    pars = Parameters.from_stack([[a], [], [b, c]])
-    assert pars.names == ["a", "b", "c"]
 
     pars = Parameters([a, b]) + Parameters([]) + Parameters([c])
     assert pars.names == ["a", "b", "c"]
@@ -121,9 +125,18 @@ def test_parameters_from_stack():
     pars = pars1 + pars2
 
     assert_allclose(pars.values, [1, 2, 3, 4, 5])
-    # FIXME: covar stacking is broken ATM
-    # assert_allclose(pars.covariance[0], [2, 2, 0, 0, 0])
-    # assert_allclose(pars.covariance[4], [0, 0, 3, 3, 3])
+    assert_allclose(pars.covariance[0], [2, 2, 0, 0, 0])
+    assert_allclose(pars.covariance[4], [0, 0, 3, 3, 3])
+
+
+def test_unique_parameters():
+    a = Parameter("a", 1)
+    b = Parameter("b", 2)
+    c = Parameter("c", 3)
+    parameters = Parameters([a, b, a, c])
+    assert parameters.names == ["a", "b", "a", "c"]
+    parameters_unique = parameters.unique_parameters
+    assert parameters_unique.names == ["a", "b", "c"]
 
 
 def test_parameters_getitem(pars):
@@ -170,3 +183,32 @@ def test_parameters_autoscale():
     pars.autoscale()
     assert_allclose(pars[0].factor, 2)
     assert_allclose(pars[0].scale, 10)
+
+
+def test_get_subcovariance():
+    a = Parameter("a", 10)
+    b = Parameter("b", 20)
+    c = Parameter("c", 30)
+
+    pars_0 = Parameters([a, b, c])
+    pars_0.covariance = np.array([[2, 3, 4], [6, 7, 8], [10, 11, 12]])
+
+    pars_1 = Parameters([a, b])
+
+    assert_equal(pars_0.get_subcovariance(pars_1), np.array([[2, 3], [6, 7]]))
+    assert_equal(pars_0.get_subcovariance([c]), np.array([[12]]))
+
+
+def test_set_subcovariance():
+    a = Parameter("a", 10)
+    b = Parameter("b", 20)
+    c = Parameter("c", 30)
+
+    pars_0 = Parameters([a, c, b])
+    pars_0.covariance = np.zeros((3, 3))
+
+    pars_1 = Parameters([a, b])
+    pars_1.covariance = np.array([[2, 3], [6, 7]])
+
+    pars_0.set_subcovariance(pars_1)
+    assert_equal(pars_0.covariance, np.array([[2, 0, 3], [0, 0, 0], [6, 0, 7]]))

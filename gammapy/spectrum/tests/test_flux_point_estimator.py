@@ -4,7 +4,7 @@ import numpy as np
 from numpy.testing import assert_allclose
 from astropy import units as u
 from astropy.coordinates import SkyCoord
-from gammapy.cube import simulate_dataset
+from gammapy.cube import MapDataset, simulate_dataset
 from gammapy.irf import EffectiveAreaTable, load_cta_irfs
 from gammapy.maps import MapAxis, WcsGeom
 from gammapy.modeling.models import (
@@ -58,7 +58,9 @@ def simulate_map_dataset(random_state=0):
         skydir=skydir, width=(4, 4), binsz=0.1, axes=[energy_axis], coordsys="GAL"
     )
 
-    gauss = GaussianSpatialModel("0 deg", "0 deg", "0.4 deg", frame="galactic")
+    gauss = GaussianSpatialModel(
+        lon_0="0 deg", lat_0="0 deg", sigma="0.4 deg", frame="galactic"
+    )
     pwl = PowerLawSpectralModel(amplitude="1e-11 cm-2 s-1 TeV-1")
     skymodel = SkyModel(spatial_model=gauss, spectral_model=pwl, name="source")
     dataset = simulate_dataset(
@@ -209,6 +211,34 @@ def test_no_likelihood_contribution():
     dataset.mask_safe = np.zeros(dataset.data_shape, dtype=bool)
 
     fpe = FluxPointsEstimator([dataset], e_edges=[1, 10] * u.TeV)
+
+    with pytest.raises(ValueError) as excinfo:
+        fpe.run()
+    assert "No dataset contributes" in str(excinfo.value)
+
+
+def test_mask_shape():
+    axis = MapAxis.from_edges([1, 3, 10], unit="TeV", interp="log", name="energy")
+    geom_1 = WcsGeom.create(binsz=1, width=3, axes=[axis])
+    geom_2 = WcsGeom.create(binsz=1, width=5, axes=[axis])
+
+    dataset_1 = MapDataset.create(geom_1)
+    dataset_2 = MapDataset.create(geom_2)
+    dataset_1.psf = None
+    dataset_2.psf = None
+    dataset_1.edisp = None
+    dataset_2.edisp = None
+
+    model = SkyModel(
+        spectral_model=PowerLawSpectralModel(), spatial_model=GaussianSpatialModel()
+    )
+
+    dataset_1.model = model
+    dataset_2.model = model
+
+    fpe = FluxPointsEstimator(
+        datasets=[dataset_2, dataset_1], e_edges=[1, 10] * u.TeV, source="source"
+    )
 
     with pytest.raises(ValueError) as excinfo:
         fpe.run()

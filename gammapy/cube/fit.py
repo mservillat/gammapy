@@ -12,7 +12,7 @@ from gammapy.cube.psf_kernel import PSFKernel
 from gammapy.cube.psf_map import PSFMap
 from gammapy.data import GTI
 from gammapy.irf import EffectiveAreaTable, EnergyDispersion, apply_containment_fraction
-from gammapy.maps import Map, MapAxis, WcsGeom
+from gammapy.maps import Map, MapAxis, WcsGeom, WcsNDMap
 from gammapy.modeling import Dataset, Parameters
 from gammapy.modeling.models import BackgroundModel, SkyModel, SkyModels
 from gammapy.spectrum import SpectrumDataset
@@ -171,7 +171,7 @@ class MapDataset(Dataset):
         # model section
         n_models = 0
         if self.model is not None:
-            n_models = len(self.model.skymodels)
+            n_models = len(self.model)
         str_ += "\t{:32}: {} \n".format("Number of models", n_models)
 
         str_ += "\t{:32}: {}\n".format("Number of parameters", len(self.parameters))
@@ -182,7 +182,7 @@ class MapDataset(Dataset):
         components = []
 
         if self.model is not None:
-            components += self.model.skymodels
+            components += self.model
 
         if self.background_model is not None:
             components += [self.background_model]
@@ -225,7 +225,7 @@ class MapDataset(Dataset):
         if model is not None:
             evaluators = []
 
-            for component in model.skymodels:
+            for component in model:
                 evaluator = MapEvaluator(
                     component, evaluation_mode=self.evaluation_mode
                 )
@@ -430,6 +430,7 @@ class MapDataset(Dataset):
         if self.exposure and other.exposure:
             self.exposure.stack(other.exposure)
         if self.background_model and other.background_model:
+
             bkg = self.background_model.evaluate()
             bkg.data[~self.mask_safe.data] = 0
             other_bkg = other.background_model.evaluate()
@@ -632,6 +633,9 @@ class MapDataset(Dataset):
                 hdulist.append(hdus["EDISP_MATRIX_EBOUNDS"])
             else:
                 hdulist += self.edisp.edisp_map.to_hdulist(hdu="EDISP")[exclude_primary]
+                hdulist += self.edisp.exposure_map.to_hdulist(hdu="edisp_exposure")[
+                    exclude_primary
+                ]
 
         if self.psf is not None:
             if isinstance(self.psf, PSFKernel):
@@ -640,6 +644,9 @@ class MapDataset(Dataset):
                 ]
             else:
                 hdulist += self.psf.psf_map.to_hdulist(hdu="psf")[exclude_primary]
+                hdulist += self.psf.exposure_map.to_hdulist(hdu="psf_exposure")[
+                    exclude_primary
+                ]
 
         if self.mask_safe is not None:
             mask_safe_int = self.mask_safe
@@ -686,10 +693,18 @@ class MapDataset(Dataset):
             kwargs["edisp"] = EnergyDispersion.from_hdulist(
                 hdulist, hdu1="EDISP_MATRIX", hdu2="EDISP_MATRIX_EBOUNDS"
             )
+        if "EDISP" in hdulist:
+            edisp_map = Map.from_hdulist(hdulist, hdu="edisp")
+            exposure_map = Map.from_hdulist(hdulist, hdu="edisp_exposure")
+            kwargs["edisp"] = EDispMap(edisp_map, exposure_map)
 
         if "PSF_KERNEL" in hdulist:
             psf_map = Map.from_hdulist(hdulist, hdu="psf_kernel")
             kwargs["psf"] = PSFKernel(psf_map)
+        if "PSF" in hdulist:
+            psf_map = Map.from_hdulist(hdulist, hdu="psf")
+            exposure_map = Map.from_hdulist(hdulist, hdu="psf_exposure")
+            kwargs["psf"] = PSFMap(psf_map, exposure_map)
 
         if "MASK_SAFE" in hdulist:
             mask_safe = Map.from_hdulist(hdulist, hdu="mask_safe")
@@ -754,6 +769,7 @@ class MapDataset(Dataset):
         dataset.model = SkyModels(models_list)
         if "likelihood" in data:
             dataset.likelihood_type = data["likelihood"]
+
         return dataset
 
     def to_dict(self, filename=""):
@@ -762,7 +778,7 @@ class MapDataset(Dataset):
             "name": self.name,
             "type": self.tag,
             "likelihood": self.likelihood_type,
-            "models": self.model.names,
+            "models": [_.name for _ in self.model],
             "background": self.background_model.name,
             "filename": str(filename),
         }
@@ -867,10 +883,17 @@ class MapDataset(Dataset):
         dataset : `MapDataset`
             Map dataset containing images.
         """
-        counts = self.counts.sum_over_axes(keepdims=keepdims)
+        counts = self.counts * self.mask_safe
+        background = self.background_model.evaluate() * self.mask_safe
+
+        counts = counts.sum_over_axes(keepdims=keepdims)
         exposure = _map_spectrum_weight(self.exposure, spectrum)
         exposure = exposure.sum_over_axes(keepdims=keepdims)
-        background = self.background_model.evaluate().sum_over_axes(keepdims=keepdims)
+        background = background.sum_over_axes(keepdims=keepdims)
+
+        idx = self.mask_safe.geom.get_axis_index_by_name("ENERGY")
+        data = np.logical_or.reduce(self.mask_safe.data, axis=idx, keepdims=keepdims)
+        mask_image = WcsNDMap(geom=counts.geom, data=data)
 
         # TODO: add edisp and psf
         edisp = None
@@ -880,6 +903,7 @@ class MapDataset(Dataset):
             counts=counts,
             exposure=exposure,
             background_model=BackgroundModel(background),
+            mask_safe=mask_image,
             edisp=edisp,
             psf=psf,
             gti=self.gti,
@@ -995,14 +1019,16 @@ class MapDatasetOnOff(MapDataset):
         parameters = []
 
         if self.model:
-            parameters += self.model.parameters.parameters
+            parameters += self.model.parameters
 
         return Parameters(parameters)
 
     @property
     def alpha(self):
         """Exposure ratio between signal and background regions"""
-        return self.acceptance / self.acceptance_off
+        alpha = self.acceptance / self.acceptance_off
+        alpha.data = np.nan_to_num(alpha.data)
+        return alpha
 
     @property
     def background(self):
@@ -1010,14 +1036,12 @@ class MapDatasetOnOff(MapDataset):
 
         Notice that this definition is valid under the assumption of cash statistic.
         """
-        background = self.alpha * self.counts_off
-        return background
+        return self.alpha * self.counts_off
 
     @property
     def excess(self):
         """Excess (counts - alpha * counts_off)"""
-        excess = self.counts.data - self.background.data
-        return excess
+        return self.counts.data - self.background.data
 
     def likelihood_per_bin(self):
         """Likelihood per bin given the current model parameters"""

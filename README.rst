@@ -27,13 +27,8 @@ Status shields
     :target: https://travis-ci.org/gammapy/gammapy
     :alt: Test Status Travis-CI
 
-* .. image:: https://img.shields.io/coveralls/gammapy/gammapy.svg
-    :target: https://coveralls.io/r/gammapy/gammapy
-    :alt: Code Coverage
-
-* .. image:: https://landscape.io/github/gammapy/gammapy/master/landscape.png
-    :target: https://landscape.io/github/gammapy/gammapy/master
-    :alt: Landscape
+* .. image:: https://codecov.io/gh/gammapy/gammapy/branch/master/graph/badge.svg
+    :target: https://codecov.io/gh/gammapy/gammapy
 
 * .. image:: https://img.shields.io/lgtm/alerts/g/gammapy/gammapy.svg?logo=lgtm&logoWidth=18
     :target: https://lgtm.com/projects/g/gammapy/gammapy/alerts/

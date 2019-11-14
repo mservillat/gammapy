@@ -106,10 +106,10 @@ def test_datasets_to_io(tmp_path):
 
     datasets = Datasets.from_yaml(filedata, filemodel)
 
-    assert len(datasets.datasets) == 2
+    assert len(datasets) == 2
     assert len(datasets.parameters) == 20
 
-    dataset0 = datasets.datasets[0]
+    dataset0 = datasets[0]
     assert dataset0.counts.data.sum() == 6824
     assert_allclose(dataset0.exposure.data.sum(), 2072125400000.0, atol=0.1)
     assert dataset0.psf is not None
@@ -119,31 +119,29 @@ def test_datasets_to_io(tmp_path):
 
     assert dataset0.background_model.name == "background_irf_gc"
 
-    dataset1 = datasets.datasets[1]
+    dataset1 = datasets[1]
     assert dataset1.background_model.name == "background_irf_g09"
 
     assert dataset0.model["gll_iem_v06_cutout"] == dataset1.model["gll_iem_v06_cutout"]
 
     assert isinstance(dataset0.model, SkyModels)
-    assert len(dataset0.model.skymodels) == 2
-    assert dataset0.model.skymodels[0].name == "gc"
-    assert dataset0.model.skymodels[1].name == "gll_iem_v06_cutout"
+    assert len(dataset0.model) == 2
+    assert dataset0.model[0].name == "gc"
+    assert dataset0.model[1].name == "gll_iem_v06_cutout"
 
     assert (
-        dataset0.model.skymodels[0].parameters["reference"]
-        is dataset1.model.skymodels[1].parameters["reference"]
+        dataset0.model[0].parameters["reference"]
+        is dataset1.model[1].parameters["reference"]
     )
 
-    assert_allclose(
-        dataset1.model.skymodels[1].parameters["lon_0"].value, 0.9, atol=0.1
-    )
+    assert_allclose(dataset1.model[1].parameters["lon_0"].value, 0.9, atol=0.1)
 
     datasets.to_yaml(tmp_path, prefix="written")
     datasets_read = Datasets.from_yaml(
         tmp_path / "written_datasets.yaml", tmp_path / "written_models.yaml"
     )
-    assert len(datasets_read.datasets) == 2
-    dataset0 = datasets_read.datasets[0]
+    assert len(datasets_read) == 2
+    dataset0 = datasets_read[0]
     assert dataset0.counts.data.sum() == 6824
     assert_allclose(dataset0.exposure.data.sum(), 2072125400000.0, atol=0.1)
     assert dataset0.psf is not None
@@ -160,8 +158,14 @@ def test_absorption_io(tmp_path):
         parameter=0.5,
         parameter_name="redshift",
     )
+    assert len(model.parameters) == 5
+
     model_dict = model.to_dict()
+    parnames = [_["name"] for _ in model_dict["parameters"]]
+    assert parnames == ["redshift", "alpha_norm"]
+
     new_model = AbsorbedSpectralModel.from_dict(model_dict)
+
     assert new_model.parameter == 0.5
     assert new_model.parameter_name == "redshift"
     assert new_model.alpha_norm.name == "alpha_norm"
@@ -196,15 +200,15 @@ def make_all_models():
     """Make an instance of each model, for testing."""
     yield Model.create("ConstantSpatialModel")
     yield Model.create("TemplateSpatialModel", map=Map.create(npix=(10, 20)))
-    yield Model.create("DiskSpatialModel", lon_0="1d", lat_0="2d", r_0="3d")
-    yield Model.create("GaussianSpatialModel", lon_0="1d", lat_0="2d", sigma="3d")
-    yield Model.create("PointSpatialModel", lon_0="1d", lat_0="2d")
+    yield Model.create("DiskSpatialModel", lon_0="1 deg", lat_0="2 deg", r_0="3 deg")
     yield Model.create(
-        "ShellSpatialModel", lon_0="1d", lat_0="2d", radius="3d", width="4d"
+        "GaussianSpatialModel", lon_0="1 deg", lat_0="2 deg", sigma="3 deg"
     )
+    yield Model.create("PointSpatialModel", lon_0="1 deg", lat_0="2 deg")
     yield Model.create(
-        "ConstantSpectralModel", const="99 cm"
-    )  # TODO: add unit validation?
+        "ShellSpatialModel", lon_0="1 deg", lat_0="2 deg", radius="3 deg", width="4 deg"
+    )
+    yield Model.create("ConstantSpectralModel", const="99 cm-2 s-1 TeV-1")
     # TODO: yield Model.create("CompoundSpectralModel")
     yield Model.create("PowerLawSpectralModel")
     yield Model.create("PowerLaw2SpectralModel")

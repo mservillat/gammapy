@@ -20,9 +20,11 @@ or request a feature, or need help with anything Gammapy-related.
     :caption: Getting Started
     :maxdepth: 1
 
+    overview
     install/index
     getting-started
     tutorials
+    howto
     references
     changelog
 
@@ -42,6 +44,7 @@ or request a feature, or need help with anything Gammapy-related.
 
     stats/index
     utils/index
+    analysis/index
     scripts/index
 
     catalog/index

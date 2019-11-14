@@ -103,12 +103,11 @@ class TestSourceCatalogGammaCat:
             assert cat[name].name == name
 
     def test_to_sky_models(self, gammacat):
-        sources = gammacat.to_sky_models()
-        source = sources.skymodels[0]
+        models = gammacat.to_sky_models()
 
-        assert len(sources.skymodels) == 74
-        assert source.name == "CTA 1"
-        assert_allclose(source.spectral_model.parameters["index"].value, 2.2)
+        assert len(models) == 74
+        assert models[0].name == "CTA 1"
+        assert_allclose(models[0].spectral_model.parameters["index"].value, 2.2)
 
 
 @requires_data()
@@ -129,10 +128,10 @@ class TestSourceCatalogObjectGammaCat:
     def test_data_python_dict(self, gammacat):
         source = gammacat[0]
         data = source._data_python_dict
-        assert type(data["ra"]) == float
+        assert isinstance(data["ra"], float)
         assert data["ra"] == 1.649999976158142
-        assert type(data["sed_e_min"]) == list
-        assert type(data["sed_e_min"][0]) == float
+        assert isinstance(data["sed_e_min"], list)
+        assert isinstance(data["sed_e_min"][0], float)
         assert_allclose(data["sed_e_min"][0], 0.5600000023841858)
 
     @pytest.mark.parametrize("ref", SOURCES, ids=lambda _: _["name"])

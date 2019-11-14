@@ -122,7 +122,7 @@ class EffectiveAreaTable:
 
     @classmethod
     def from_parametrization(cls, energy, instrument="HESS"):
-        r"""Get parametrized effective area.
+        r"""Create parametrized effective area.
 
         Parametrizations of the effective areas of different Cherenkov
         telescopes taken from Appendix B of Abramowski et al. (2010), see
@@ -163,6 +163,20 @@ class EffectiveAreaTable:
         value = g1 * xx ** (-g2) * np.exp(g3 / xx)
         data = u.Quantity(value, "cm2", copy=False)
 
+        return cls(energy_lo=energy[:-1], energy_hi=energy[1:], data=data)
+
+    @classmethod
+    def from_constant(cls, energy, value):
+        """Create constant value effective area.
+
+        Parameters
+        ----------
+        energy : `~astropy.units.Quantity`
+            Energy binning, analytic function is evaluated at log centers
+        value : `~astropy.units.Quantity`
+            Effective area
+        """
+        data = np.ones((len(energy) - 1)) * u.Quantity(value)
         return cls(energy_lo=energy[:-1], energy_hi=energy[1:], data=data)
 
     @classmethod
@@ -284,24 +298,6 @@ class EffectiveAreaTable:
 
         aeff_spectrum = TemplateSpectralModel(energy, self.data.data)
         return aeff_spectrum.inverse(aeff, emin=emin, emax=emax)
-
-    def to_sherpa(self, name):
-        """Convert to `~sherpa.astro.data.DataARF`
-
-        Parameters
-        ----------
-        name : str
-            Instance name
-        """
-        from sherpa.astro.data import DataARF
-
-        table = self.to_table()
-        return DataARF(
-            name=name,
-            energ_lo=table["ENERG_LO"].quantity.to_value("keV"),
-            energ_hi=table["ENERG_HI"].quantity.to_value("keV"),
-            specresp=table["SPECRESP"].quantity.to_value("cm2"),
-        )
 
 
 class EffectiveAreaTable2D:

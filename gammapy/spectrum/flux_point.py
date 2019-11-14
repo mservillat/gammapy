@@ -790,7 +790,7 @@ class FluxPointsEstimator:
         self.datasets = datasets.copy()
         self.e_edges = e_edges
 
-        dataset = self.datasets.datasets[0]
+        dataset = self.datasets[0]
 
         if isinstance(dataset, SpectrumDatasetOnOff):
             model = dataset.model
@@ -826,14 +826,14 @@ class FluxPointsEstimator:
 
         counts_all = self.estimate_counts()["counts"]
 
-        for counts, dataset in zip(counts_all, self.datasets.datasets):
+        for counts, dataset in zip(counts_all, self.datasets):
             if isinstance(dataset, MapDataset) and counts == 0:
                 if dataset.background_model is not None:
                     dataset.background_model.parameters.freeze_all()
 
     def _set_scale_model(self):
         # set the model on all datasets
-        for dataset in self.datasets.datasets:
+        for dataset in self.datasets:
             if isinstance(dataset, SpectrumDatasetOnOff):
                 dataset.model = self.model
             else:
@@ -846,7 +846,7 @@ class FluxPointsEstimator:
     @property
     def e_groups(self):
         """Energy grouping table `~astropy.table.Table`"""
-        dataset = self.datasets.datasets[0]
+        dataset = self.datasets[0]
         if isinstance(dataset, SpectrumDatasetOnOff):
             energy_axis = dataset.counts.energy
         else:
@@ -883,8 +883,8 @@ class FluxPointsEstimator:
         table = table_from_row_data(rows=rows, meta={"SED_TYPE": "likelihood"})
         return FluxPoints(table).to_sed_type("dnde")
 
-    def _energy_mask(self, e_group):
-        energy_mask = np.zeros(self.datasets.datasets[0].data_shape)
+    def _energy_mask(self, e_group, dataset):
+        energy_mask = np.zeros(dataset.data_shape)
         energy_mask[e_group["idx_min"] : e_group["idx_max"] + 1] = 1
         return energy_mask.astype(bool)
 
@@ -926,8 +926,8 @@ class FluxPointsEstimator:
         }
         contribute_to_likelihood = False
 
-        for dataset in self.datasets.datasets:
-            dataset.mask_fit = self._energy_mask(e_group)
+        for dataset in self.datasets:
+            dataset.mask_fit = self._energy_mask(e_group=e_group, dataset=dataset)
             mask = dataset.mask_fit
 
             if dataset.mask_safe is not None:
@@ -1014,7 +1014,7 @@ class FluxPointsEstimator:
             Dict with an array with one entry per dataset with counts for the flux point.
         """
         counts = []
-        for dataset in self.datasets.datasets:
+        for dataset in self.datasets:
             mask = dataset.mask_fit
             if dataset.mask_safe is not None:
                 mask &= dataset.mask_safe
@@ -1237,7 +1237,7 @@ class FluxPointsDataset(Dataset):
         return {
             "name": self.name,
             "type": self.tag,
-            "models": self.model.names,
+            "models": [_.name for _ in self.model],
             "likelihood": self.likelihood_type,
             "filename": str(filename),
         }
